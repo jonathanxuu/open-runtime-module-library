@@ -57,6 +57,8 @@ struct Meter {
 mod meter_no_std;
 mod meter_std;
 
+// For use in mock file
+#[cfg(test)]
 extern crate self as orml_weight_meter;
 
 #[cfg(test)]

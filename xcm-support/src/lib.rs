@@ -10,11 +10,26 @@
 #![allow(clippy::unused_unit)]
 
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::{decl_error, decl_event, decl_module, sp_runtime::traits::Hash, traits::EnsureOrigin, weights::Weight};
+
 use sp_runtime::traits::{CheckedConversion, Convert};
 use sp_std::{convert::TryFrom, marker::PhantomData, prelude::*};
 
 use xcm::v0::{MultiAsset, MultiLocation, Xcm};
 use xcm_executor::traits::{FilterAssetLocation, MatchesFungible};
+use xcm_builder::EnsureXcmOrigin;
+use xcm::{
+	v0::{Error as XcmError, Junction, SendXcm, Outcome},
+	VersionedXcm,
+};
+use frame_system::pallet_prelude::*;
+use cumulus_primitives_core::{
+	DmpMessageHandler, InboundDownwardMessage,
+	InboundHrmpMessage, OutboundHrmpMessage, ParaId, UpwardMessageSender,
+};
+
+
+
 
 use orml_traits::location::Reserve;
 
@@ -24,10 +39,15 @@ mod currency_adapter;
 
 mod tests;
 
-/// The XCM handler to execute XCM locally.
-pub trait XcmHandler<AccountId> {
-	fn execute_xcm(origin: AccountId, xcm: Xcm) -> DispatchResult;
+/// Type of XCM message executor.
+pub trait ExecuteXcm<Call> {
+	/// Execute some XCM `message` from `origin` using no more than `weight_limit` weight. The weight limit is
+	/// a basic hard-limit and the implementation may place further restrictions or requirements on weight and
+	/// other aspects.
+	fn execute_xcm(origin: MultiLocation, message: Xcm<Call>, weight_limit: Weight) -> Outcome;
 }
+
+
 
 /// A `MatchesFungible` implementation. It matches concrete fungible assets
 /// whose `id` could be converted into `CurrencyId`.

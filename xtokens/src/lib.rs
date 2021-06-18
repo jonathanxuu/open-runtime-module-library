@@ -38,7 +38,7 @@ use xcm::v0::{
 };
 
 use orml_traits::location::{Parse, Reserve};
-use orml_xcm_support::XcmHandler;
+use orml_xcm_support::ExecuteXcm;
 
 mod mock;
 mod tests;
@@ -76,7 +76,7 @@ pub mod module {
 		type SelfLocation: Get<MultiLocation>;
 
 		/// Xcm handler to execute XCM.
-		type XcmHandler: XcmHandler<Self::AccountId>;
+		type ExecuteXcm: ExecuteXcm<Self::Call>;
 	}
 
 	#[pallet::event]
@@ -155,6 +155,8 @@ pub mod module {
 		}
 	}
 
+
+	
 	impl<T: Config> Pallet<T> {
 		/// Transfer `MultiAsset` without depositing event.
 		fn do_transfer_multiasset(
@@ -168,7 +170,7 @@ pub mod module {
 			ensure!(dest != self_location, Error::<T>::NotCrossChainTransfer);
 
 			let reserve = asset.reserve().ok_or(Error::<T>::AssetHasNoReserve)?;
-			let xcm = if reserve == self_location {
+			let xcm: Xcm<<T as frame_system::Config>::Call> = if reserve == self_location {
 				Self::transfer_self_reserve_asset(asset, dest, recipient)
 			} else if reserve == dest {
 				Self::transfer_to_reserve(asset, dest, recipient)
@@ -176,12 +178,15 @@ pub mod module {
 				Self::transfer_to_non_reserve(asset, reserve, dest, recipient)
 			};
 
-			T::XcmHandler::execute_xcm(who, xcm)?;
+			T::ExecuteXcm::execute_xcm(	MultiLocation::X1(xcm::v0::Junction::AccountId32 {
+				id: T::AccountId32Convert::convert(who.clone()),
+				network: xcm::v0::NetworkId::Any,
+			}), xcm, 0);
 
 			Ok(().into())
 		}
 
-		fn transfer_self_reserve_asset(asset: MultiAsset, dest: MultiLocation, recipient: MultiLocation) -> Xcm {
+		fn transfer_self_reserve_asset<Call>(asset: MultiAsset, dest: MultiLocation, recipient: MultiLocation) -> Xcm<Call> {
 			WithdrawAsset {
 				assets: vec![asset],
 				effects: vec![DepositReserveAsset {
@@ -192,7 +197,7 @@ pub mod module {
 			}
 		}
 
-		fn transfer_to_reserve(asset: MultiAsset, reserve: MultiLocation, recipient: MultiLocation) -> Xcm {
+		fn transfer_to_reserve<Call>(asset: MultiAsset, reserve: MultiLocation, recipient: MultiLocation) -> Xcm<Call> {
 			WithdrawAsset {
 				assets: vec![asset],
 				effects: vec![InitiateReserveWithdraw {
@@ -203,16 +208,16 @@ pub mod module {
 			}
 		}
 
-		fn transfer_to_non_reserve(
+		fn transfer_to_non_reserve<Call>(
 			asset: MultiAsset,
 			reserve: MultiLocation,
 			dest: MultiLocation,
 			recipient: MultiLocation,
-		) -> Xcm {
+		) -> Xcm<Call> {
 			let mut reanchored_dest = dest.clone();
 			if reserve == Parent.into() {
-				if let MultiLocation::X2(Parent, Parachain { id }) = dest {
-					reanchored_dest = Parachain { id }.into();
+				if let MultiLocation::X2(Parent, Parachain(id)) = dest {
+					reanchored_dest = Parachain (id).into();
 				}
 			}
 
@@ -230,7 +235,7 @@ pub mod module {
 			}
 		}
 
-		fn deposit_asset(recipient: MultiLocation) -> Vec<Order> {
+		fn deposit_asset<Call>(recipient: MultiLocation) -> Vec<Order<Call>> {
 			vec![DepositAsset {
 				assets: vec![MultiAsset::All],
 				dest: recipient,

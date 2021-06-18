@@ -66,7 +66,9 @@ fn vested_transfer_works() {
 		};
 		assert_ok!(Vesting::vested_transfer(Origin::signed(ALICE), BOB, schedule.clone()));
 		assert_eq!(Vesting::vesting_schedules(&BOB), vec![schedule.clone()]);
-		System::assert_last_event(Event::vesting(crate::Event::VestingScheduleAdded(ALICE, BOB, schedule)));
+
+		let vested_event = Event::vesting(crate::Event::VestingScheduleAdded(ALICE, BOB, schedule));
+		assert!(System::events().iter().any(|record| record.event == vested_event));
 	});
 }
 
@@ -92,8 +94,8 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
 		assert_ok!(Vesting::vested_transfer(Origin::signed(ALICE), BOB, another_schedule));
 
 		assert_eq!(
-			PalletBalances::locks(&BOB).get(0),
-			Some(&BalanceLock {
+			PalletBalances::locks(&BOB).pop(),
+			Some(BalanceLock {
 				id: VESTING_LOCK_ID,
 				amount: 17u64,
 				reasons: Reasons::All,

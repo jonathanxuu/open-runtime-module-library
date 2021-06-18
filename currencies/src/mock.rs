@@ -123,18 +123,20 @@ pub const EVA: AccountId = AccountId32::new([5u8; 32]);
 pub const ID_1: LockIdentifier = *b"1       ";
 
 pub struct ExtBuilder {
-	balances: Vec<(AccountId, CurrencyId, Balance)>,
+	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self { balances: vec![] }
+		Self {
+			endowed_accounts: vec![],
+		}
 	}
 }
 
 impl ExtBuilder {
-	pub fn balances(mut self, balances: Vec<(AccountId, CurrencyId, Balance)>) -> Self {
-		self.balances = balances;
+	pub fn balances(mut self, endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>) -> Self {
+		self.endowed_accounts = endowed_accounts;
 		self
 	}
 
@@ -154,7 +156,7 @@ impl ExtBuilder {
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self
-				.balances
+				.endowed_accounts
 				.clone()
 				.into_iter()
 				.filter(|(_, currency_id, _)| *currency_id == NATIVE_CURRENCY_ID)
@@ -165,8 +167,8 @@ impl ExtBuilder {
 		.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
-			balances: self
-				.balances
+			endowed_accounts: self
+				.endowed_accounts
 				.into_iter()
 				.filter(|(_, currency_id, _)| *currency_id != NATIVE_CURRENCY_ID)
 				.collect::<Vec<_>>(),

@@ -240,22 +240,22 @@ construct_runtime!(
 );
 
 pub struct ExtBuilder {
-	balances: Vec<(AccountId, CurrencyId, Balance)>,
+	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
 	treasury_genesis: bool,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			balances: vec![],
+			endowed_accounts: vec![],
 			treasury_genesis: false,
 		}
 	}
 }
 
 impl ExtBuilder {
-	pub fn balances(mut self, balances: Vec<(AccountId, CurrencyId, Balance)>) -> Self {
-		self.balances = balances;
+	pub fn balances(mut self, endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>) -> Self {
+		self.endowed_accounts = endowed_accounts;
 		self
 	}
 
@@ -274,7 +274,7 @@ impl ExtBuilder {
 			.unwrap();
 
 		tokens::GenesisConfig::<Runtime> {
-			balances: self.balances,
+			endowed_accounts: self.endowed_accounts,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
